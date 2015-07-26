@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -12,18 +13,35 @@ import (
 	"unicode"
 )
 
+var (
+	structs = flag.String("t", "*", "the structs to use")
+)
+
+func contains(s []string, v string) bool {
+	for _, a := range s {
+		if a == v {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
-	args := os.Args[1:]
+	flag.Parse()
+
+	args := flag.Args()
 	if len(args) < 2 {
 		fmt.Println("Usage : easytags {file_name} {tag_name} \n example: easytags file.go json")
 		return
 	}
 
-	GenerateTags(args[0], args[1])
+	structNames := strings.Split(*structs, ",")
+
+	GenerateTags(flag.Arg(0), flag.Arg(1), structNames)
 }
 
 // generates snake case json tags so that you won't need to write them. Can be also exteded to xml or sql tags
-func GenerateTags(fileName, tagName string) {
+func GenerateTags(fileName, tagName string, structNames []string) {
 	fset := token.NewFileSet() // positions are relative to fset
 	// Parse the file given in arguments
 	f, err := parser.ParseFile(fset, fileName, nil, parser.ParseComments)
@@ -47,6 +65,11 @@ func GenerateTags(fileName, tagName string) {
 			if !ok {
 				continue
 			}
+
+			if structNames[0] != "*" && !contains(structNames, ts.Name.Name) {
+				continue
+			}
+
 			for _, field := range x.Fields.List {
 				if len(field.Names) == 0 {
 					continue
